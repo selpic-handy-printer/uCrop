@@ -69,4 +69,9 @@ public class RectUtils {
         return r;
     }
 
+    public static void set(RectF outRect, float centerX, float centerY, float width, float height) {
+        float left = centerX - width / 2;
+        float top = centerY - height / 2;
+        outRect.set(left, top, left + width, top + height);
+    }
 }

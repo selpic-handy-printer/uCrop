@@ -97,4 +97,19 @@ public class UCropView extends FrameLayout {
             ((GestureCropImageView) mCropImageView).setRotateEnabled(rotateEnabled);
         }
     }
+
+    public void rotate90(){
+        mCropImageView.postRotate(90);
+        RectF oldCropRect = new RectF(mViewOverlay.getCropViewRect());
+        mViewOverlay.rotate90();
+        RectF cropRect = mViewOverlay.getCropViewRect();
+        float scale = cropRect.height() / oldCropRect.width();
+        float deltaX = cropRect.centerX() - oldCropRect.centerX();
+        float deltaY = cropRect.centerY() - oldCropRect.centerY();
+        if (scale != 1f || deltaX != 0f || deltaY != 0f) {
+            float deltaScale = mCropImageView.getCurrentScale() * scale - mCropImageView.getCurrentScale();
+            mCropImageView.cancelAllAnimations(); // cancel prev animation
+            mCropImageView.moveAndZoomImage(deltaX, deltaY, deltaScale, oldCropRect.centerX(), oldCropRect.centerY(), false);
+        }
+    }
 }

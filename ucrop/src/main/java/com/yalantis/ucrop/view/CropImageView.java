@@ -48,7 +48,7 @@ public class CropImageView extends TransformImageView {
 
     private CropBoundsChangeListener mCropBoundsChangeListener;
 
-    private Runnable mWrapCropBoundsRunnable, mZoomImageToPositionRunnable = null;
+    private Runnable mWrapCropBoundsRunnable, mZoomImageToPositionRunnable, mZoomAndMoveImageRunnable = null;
 
     private float mMaxScale, mMinScale;
     private int mMaxResultImageSizeX = 0, mMaxResultImageSizeY = 0;
@@ -260,6 +260,7 @@ public class CropImageView extends TransformImageView {
     public void cancelAllAnimations() {
         removeCallbacks(mWrapCropBoundsRunnable);
         removeCallbacks(mZoomImageToPositionRunnable);
+        removeCallbacks(mZoomAndMoveImageRunnable);
     }
 
     public void setImageToWrapCropBounds() {
@@ -320,6 +321,30 @@ public class CropImageView extends TransformImageView {
                     zoomInImage(currentScale + deltaScale, mCropRect.centerX(), mCropRect.centerY());
                 }
             }
+        }
+    }
+
+    public void moveAndZoomImage(float deltaX, float deltaY, float deltaScale, float centerX, float centerY, boolean animate) {
+        if (!mBitmapLaidOut) {
+            return;
+        }
+
+        float currentScale = getCurrentScale();
+        if (animate) {
+            post(mZoomAndMoveImageRunnable = new MoveAndZoomImageRunnable(
+                    CropImageView.this,
+                    mImageToWrapCropBoundsAnimDuration,
+                    mCurrentImageCenter[0],
+                    mCurrentImageCenter[1],
+                    centerX, centerY,
+                    deltaX, deltaY,
+                    currentScale,
+                    deltaScale
+            ));
+        } else {
+            postTranslate(deltaX, deltaY);
+            // todo: fix position error...
+            zoomInImage(currentScale + deltaScale, centerX + deltaX, centerY + deltaY);
         }
     }
 
@@ -564,6 +589,7 @@ public class CropImageView extends TransformImageView {
             float newScale = CubicEasing.easeInOut(currentMs, 0, mDeltaScale, mDurationMs);
 
             if (currentMs < mDurationMs) {
+                // Log.d("WrapCropBoundsRunnable", "run: " + currentMs);
                 cropImageView.postTranslate(newX - (cropImageView.mCurrentImageCenter[0] - mOldX), newY - (cropImageView.mCurrentImageCenter[1] - mOldY));
                 if (!mWillBeImageInBoundsAfterTranslate) {
                     cropImageView.zoomInImage(mOldScale + newScale, cropImageView.mCropRect.centerX(), cropImageView.mCropRect.centerY());
@@ -571,6 +597,66 @@ public class CropImageView extends TransformImageView {
                 if (!cropImageView.isImageWrapCropBounds()) {
                     cropImageView.post(this);
                 }
+            }
+        }
+    }
+
+    private static class MoveAndZoomImageRunnable implements Runnable {
+
+        private final WeakReference<CropImageView> mCropImageView;
+
+        private final long mDurationMs;
+        private float mCenterX;
+        private float mCenterY;
+        private final long mStartTime;
+        private final float mOldX, mOldY;
+        private final float mCenterDiffX, mCenterDiffY;
+        private final float mOldScale;
+        private final float mDeltaScale;
+
+        public MoveAndZoomImageRunnable(CropImageView cropImageView,
+                                        long durationMs,
+                                        float oldX, float oldY,
+                                        float centerX, float centerY,
+                                        float centerDiffX, float centerDiffY,
+                                        float oldScale, float deltaScale) {
+
+            mCropImageView = new WeakReference<>(cropImageView);
+            mDurationMs = durationMs;
+            mCenterX = centerX;
+            mCenterY = centerY;
+            mStartTime = System.currentTimeMillis();
+            mOldX = oldX;
+            mOldY = oldY;
+            mCenterDiffX = centerDiffX;
+            mCenterDiffY = centerDiffY;
+            mOldScale = oldScale;
+            mDeltaScale = deltaScale;
+        }
+
+        @Override
+        public void run() {
+            CropImageView cropImageView = mCropImageView.get();
+            if (cropImageView == null) {
+                return;
+            }
+
+            long now = System.currentTimeMillis();
+            float currentMs = Math.min(mDurationMs, now - mStartTime);
+
+            float newX = CubicEasing.easeOut(currentMs, 0, mCenterDiffX, mDurationMs);
+            float newY = CubicEasing.easeOut(currentMs, 0, mCenterDiffY, mDurationMs);
+            float newScale = CubicEasing.easeInOut(currentMs, 0, mDeltaScale, mDurationMs);
+            // Log.d("ZoomAndMoveRunnable", "run: " + currentMs);
+            cropImageView.postTranslate(newX - (cropImageView.mCurrentImageCenter[0] - mOldX), newY - (cropImageView.mCurrentImageCenter[1] - mOldY));
+            // todo: fix position error...
+            cropImageView.zoomInImage(mOldScale + newScale, mCenterX + newX, mCenterY + newY);
+
+            if (currentMs < mDurationMs) {
+                cropImageView.post(this);
+            } else {
+                // Log.d("ZoomAndMoveRunnable", "scale:" + cropImageView.getCurrentScale() + ", targetScale:" + (mOldScale + mDeltaScale));
+                cropImageView.setImageToWrapCropBounds();
             }
         }
     }

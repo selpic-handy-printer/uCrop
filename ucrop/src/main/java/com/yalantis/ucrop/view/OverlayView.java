@@ -398,18 +398,16 @@ public class OverlayView extends View {
         }
     }
 
-    /**
-     * Swap the width and height of the crop area
-     */
-    public void swapWidthHeight() {
+    public void rotate90() {
         if (mCropViewRect.width() == mCropViewRect.height()) {
             return;
         }
-        float left = mCropViewRect.centerX() - mCropViewRect.height() / 2;
-        float right = left + mCropViewRect.height();
-        float top = mCropViewRect.centerY() - mCropViewRect.width() / 2;
-        float bottom = top + mCropViewRect.width();
-        mCropViewRect.set(left, top, right, bottom);
+        RectUtils.set(mCropViewRect, mCropViewRect.centerX(), mCropViewRect.centerY(), /*width:*/mCropViewRect.height(), /*height:*/mCropViewRect.width());
+        RectF viewRect = new RectF(getPaddingLeft(), getPaddingTop(), getWidth() - getPaddingRight(), getHeight() - getPaddingBottom());
+        if (!viewRect.contains(mCropViewRect)) {
+            float scale = Math.min(viewRect.width() / mCropViewRect.width(), viewRect.height() / mCropViewRect.height());
+            RectUtils.set(mCropViewRect, viewRect.centerX(), viewRect.centerY(), mCropViewRect.width() * scale, mCropViewRect.height() * scale);
+        }
         updateGridPoints();
         invalidate();
         if (mCallback != null) {
