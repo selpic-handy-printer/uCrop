@@ -399,6 +399,25 @@ public class OverlayView extends View {
     }
 
     /**
+     * Swap the width and height of the crop area
+     */
+    public void swapWidthHeight() {
+        if (mCropViewRect.width() == mCropViewRect.height()) {
+            return;
+        }
+        float left = mCropViewRect.centerX() - mCropViewRect.height() / 2;
+        float right = left + mCropViewRect.height();
+        float top = mCropViewRect.centerY() - mCropViewRect.width() / 2;
+        float bottom = top + mCropViewRect.width();
+        mCropViewRect.set(left, top, right, bottom);
+        updateGridPoints();
+        invalidate();
+        if (mCallback != null) {
+            mCallback.onCropRectUpdated(mCropViewRect);
+        }
+    }
+
+    /**
      * * The order of the corners in the float array is:
      * 0------->1
      * ^        |
