@@ -9,6 +9,10 @@ import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.util.AttributeSet;
 
+import androidx.annotation.IntRange;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import com.yalantis.ucrop.R;
 import com.yalantis.ucrop.callback.BitmapCropCallback;
 import com.yalantis.ucrop.callback.CropBoundsChangeListener;
@@ -20,10 +24,6 @@ import com.yalantis.ucrop.util.RectUtils;
 
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
-
-import androidx.annotation.IntRange;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 /**
  * Created by Oleksii Shliama (https://github.com/shliama).
@@ -121,6 +121,10 @@ public class CropImageView extends TransformImageView {
                 cropRect.right - getPaddingRight(), cropRect.bottom - getPaddingBottom());
         calculateImageScaleBounds();
         setImageToWrapCropBounds();
+    }
+
+    public RectF getCropRect() {
+        return mCropRect;
     }
 
     /**
@@ -334,17 +338,16 @@ public class CropImageView extends TransformImageView {
             post(mZoomAndMoveImageRunnable = new MoveAndZoomImageRunnable(
                     CropImageView.this,
                     mImageToWrapCropBoundsAnimDuration,
-                    mCurrentImageCenter[0],
-                    mCurrentImageCenter[1],
-                    centerX, centerY,
-                    deltaX, deltaY,
+                    centerX,
+                    centerY,
+                    deltaX,
+                    deltaY,
                     currentScale,
                     deltaScale
             ));
         } else {
             postTranslate(deltaX, deltaY);
-            // todo: fix position error...
-            zoomInImage(currentScale + deltaScale, centerX + deltaX, centerY + deltaY);
+            zoomInImage(currentScale + deltaScale, centerX + deltaX, centerY + centerY);
         }
     }
 
@@ -609,14 +612,13 @@ public class CropImageView extends TransformImageView {
         private float mCenterX;
         private float mCenterY;
         private final long mStartTime;
-        private final float mOldX, mOldY;
+        private float mPrevX, mPrevY;
         private final float mCenterDiffX, mCenterDiffY;
         private final float mOldScale;
         private final float mDeltaScale;
 
         public MoveAndZoomImageRunnable(CropImageView cropImageView,
                                         long durationMs,
-                                        float oldX, float oldY,
                                         float centerX, float centerY,
                                         float centerDiffX, float centerDiffY,
                                         float oldScale, float deltaScale) {
@@ -626,8 +628,8 @@ public class CropImageView extends TransformImageView {
             mCenterX = centerX;
             mCenterY = centerY;
             mStartTime = System.currentTimeMillis();
-            mOldX = oldX;
-            mOldY = oldY;
+            mPrevX = 0;
+            mPrevY = 0;
             mCenterDiffX = centerDiffX;
             mCenterDiffY = centerDiffY;
             mOldScale = oldScale;
@@ -648,10 +650,10 @@ public class CropImageView extends TransformImageView {
             float newY = CubicEasing.easeOut(currentMs, 0, mCenterDiffY, mDurationMs);
             float newScale = CubicEasing.easeInOut(currentMs, 0, mDeltaScale, mDurationMs);
             // Log.d("ZoomAndMoveRunnable", "run: " + currentMs);
-            cropImageView.postTranslate(newX - (cropImageView.mCurrentImageCenter[0] - mOldX), newY - (cropImageView.mCurrentImageCenter[1] - mOldY));
-            // todo: fix position error...
+            cropImageView.postTranslate(newX - mPrevX, newY - mPrevY);
             cropImageView.zoomInImage(mOldScale + newScale, mCenterX + newX, mCenterY + newY);
-
+            mPrevX = newX;
+            mPrevY = newY;
             if (currentMs < mDurationMs) {
                 cropImageView.post(this);
             } else {
