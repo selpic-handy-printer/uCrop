@@ -12,17 +12,17 @@ import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 
+import androidx.annotation.ColorInt;
+import androidx.annotation.IntDef;
+import androidx.annotation.IntRange;
+import androidx.annotation.NonNull;
+
 import com.yalantis.ucrop.R;
 import com.yalantis.ucrop.callback.OverlayViewChangeListener;
 import com.yalantis.ucrop.util.RectUtils;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-
-import androidx.annotation.ColorInt;
-import androidx.annotation.IntDef;
-import androidx.annotation.IntRange;
-import androidx.annotation.NonNull;
 
 /**
  * Created by Oleksii Shliama (https://github.com/shliama).
@@ -398,13 +398,13 @@ public class OverlayView extends View {
         }
     }
 
-    public void rotate90() {
+    public void rotate90(boolean forceFillView) {
         if (mCropViewRect.width() == mCropViewRect.height()) {
             return;
         }
         RectUtils.set(mCropViewRect, mCropViewRect.centerX(), mCropViewRect.centerY(), /*width:*/mCropViewRect.height(), /*height:*/mCropViewRect.width());
         RectF viewRect = new RectF(getPaddingLeft(), getPaddingTop(), getWidth() - getPaddingRight(), getHeight() - getPaddingBottom());
-        if (!viewRect.contains(mCropViewRect)) {
+        if (forceFillView || !viewRect.contains(mCropViewRect)) {
             float scale = Math.min(viewRect.width() / mCropViewRect.width(), viewRect.height() / mCropViewRect.height());
             RectUtils.set(mCropViewRect, viewRect.centerX(), viewRect.centerY(), mCropViewRect.width() * scale, mCropViewRect.height() * scale);
         }

@@ -328,14 +328,20 @@ public class CropImageView extends TransformImageView {
         }
     }
 
-    public void moveAndZoomImage(float deltaX, float deltaY, float deltaScale, float centerX, float centerY, boolean animate) {
+    public void setImageToPosition(
+            float deltaX, float deltaY,
+            float deltaScale,
+            float deltaRotate,
+            float centerX, float centerY,
+            boolean animate
+    ) {
         if (!mBitmapLaidOut) {
             return;
         }
 
         float currentScale = getCurrentScale();
         if (animate) {
-            post(mZoomAndMoveImageRunnable = new MoveAndZoomImageRunnable(
+            post(mZoomAndMoveImageRunnable = new ImageToPositionRunnable(
                     CropImageView.this,
                     mImageToWrapCropBoundsAnimDuration,
                     centerX,
@@ -343,10 +349,12 @@ public class CropImageView extends TransformImageView {
                     deltaX,
                     deltaY,
                     currentScale,
-                    deltaScale
+                    deltaScale,
+                    90
             ));
         } else {
             postTranslate(deltaX, deltaY);
+            postRotate(deltaRotate, centerX + deltaX, centerY + deltaY);
             zoomInImage(currentScale + deltaScale, centerX + deltaX, centerY + centerY);
         }
     }
@@ -604,32 +612,38 @@ public class CropImageView extends TransformImageView {
         }
     }
 
-    private static class MoveAndZoomImageRunnable implements Runnable {
+    private static class ImageToPositionRunnable implements Runnable {
 
         private final WeakReference<CropImageView> mCropImageView;
 
         private final long mDurationMs;
         private float mCenterX;
         private float mCenterY;
+        private float mDeltaRotate;
         private final long mStartTime;
-        private float mPrevX, mPrevY;
+        private float mPrevX, mPrevY, mPrevRotate;
         private final float mCenterDiffX, mCenterDiffY;
         private final float mOldScale;
         private final float mDeltaScale;
 
-        public MoveAndZoomImageRunnable(CropImageView cropImageView,
-                                        long durationMs,
-                                        float centerX, float centerY,
-                                        float centerDiffX, float centerDiffY,
-                                        float oldScale, float deltaScale) {
+        public ImageToPositionRunnable(CropImageView cropImageView,
+                                       long durationMs,
+                                       float centerX, float centerY,
+                                       float centerDiffX, float centerDiffY,
+                                       float oldScale,
+                                       float deltaScale,
+                                       float deltaRotate
+        ) {
 
             mCropImageView = new WeakReference<>(cropImageView);
             mDurationMs = durationMs;
             mCenterX = centerX;
             mCenterY = centerY;
+            mDeltaRotate = deltaRotate;
             mStartTime = System.currentTimeMillis();
             mPrevX = 0;
             mPrevY = 0;
+            mPrevRotate = 0;
             mCenterDiffX = centerDiffX;
             mCenterDiffY = centerDiffY;
             mOldScale = oldScale;
@@ -649,11 +663,15 @@ public class CropImageView extends TransformImageView {
             float newX = CubicEasing.easeOut(currentMs, 0, mCenterDiffX, mDurationMs);
             float newY = CubicEasing.easeOut(currentMs, 0, mCenterDiffY, mDurationMs);
             float newScale = CubicEasing.easeInOut(currentMs, 0, mDeltaScale, mDurationMs);
+            float newRotate = CubicEasing.easeInOut(currentMs, 0, mDeltaRotate, mDurationMs);
+
             // Log.d("ZoomAndMoveRunnable", "run: " + currentMs);
             cropImageView.postTranslate(newX - mPrevX, newY - mPrevY);
+            cropImageView.postRotate(newRotate - mPrevRotate, mCenterX + newX, mCenterY + newY);
             cropImageView.zoomInImage(mOldScale + newScale, mCenterX + newX, mCenterY + newY);
             mPrevX = newX;
             mPrevY = newY;
+            mPrevRotate = newRotate;
             if (currentMs < mDurationMs) {
                 cropImageView.post(this);
             } else {

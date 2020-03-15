@@ -98,20 +98,18 @@ public class UCropView extends FrameLayout {
         }
     }
 
-    public void rotate90() {
-        mCropImageView.postRotate(90);
+    public void rotate90(boolean forceFillView) {
         RectF oldCropRect = new RectF(mViewOverlay.getCropViewRect());
-        mViewOverlay.rotate90();
+        mViewOverlay.rotate90(forceFillView);
         RectF cropRect = mViewOverlay.getCropViewRect();
         float scale = cropRect.height() / oldCropRect.width();
         float deltaX = cropRect.centerX() - oldCropRect.centerX();
         float deltaY = cropRect.centerY() - oldCropRect.centerY();
-        if (scale != 1f || deltaX != 0f || deltaY != 0f) {
-            float deltaScale = mCropImageView.getCurrentScale() * scale - mCropImageView.getCurrentScale();
-            float finalCenterX = mCropImageView.getCropRect().centerX();
-            float finalCenterY = mCropImageView.getCropRect().centerY();
-            mCropImageView.cancelAllAnimations(); // cancel prev animation
-            mCropImageView.moveAndZoomImage(deltaX, deltaY, deltaScale, finalCenterX - deltaX, finalCenterY - deltaY, true);
-        }
+        // calculate params
+        float deltaScale = mCropImageView.getCurrentScale() * scale - mCropImageView.getCurrentScale();
+        float finalCenterX = mCropImageView.getCropRect().centerX();
+        float finalCenterY = mCropImageView.getCropRect().centerY();
+        mCropImageView.cancelAllAnimations(); // cancel prev animation
+        mCropImageView.setImageToPosition(deltaX, deltaY, deltaScale, 90, finalCenterX - deltaX, finalCenterY - deltaY, true);
     }
 }
