@@ -48,7 +48,8 @@ public class CropImageView extends TransformImageView {
 
     private CropBoundsChangeListener mCropBoundsChangeListener;
 
-    private Runnable mWrapCropBoundsRunnable, mZoomImageToPositionRunnable, mZoomAndMoveImageRunnable = null;
+    private Runnable mWrapCropBoundsRunnable, mZoomImageToPositionRunnable;
+    private ImageToPositionRunnable mImageToPositionRunnable = null;
 
     private float mMaxScale, mMinScale;
     private int mMaxResultImageSizeX = 0, mMaxResultImageSizeY = 0;
@@ -264,7 +265,16 @@ public class CropImageView extends TransformImageView {
     public void cancelAllAnimations() {
         removeCallbacks(mWrapCropBoundsRunnable);
         removeCallbacks(mZoomImageToPositionRunnable);
-        removeCallbacks(mZoomAndMoveImageRunnable);
+        removeCallbacks(mImageToPositionRunnable);
+        mWrapCropBoundsRunnable = null;
+        mZoomImageToPositionRunnable = null;
+        mImageToPositionRunnable = null;
+    }
+
+    public boolean isAnimationRunning() {
+        return mWrapCropBoundsRunnable != null
+                || mZoomImageToPositionRunnable != null
+                || mImageToPositionRunnable != null;
     }
 
     public void setImageToWrapCropBounds() {
@@ -341,7 +351,7 @@ public class CropImageView extends TransformImageView {
 
         float currentScale = getCurrentScale();
         if (animate) {
-            post(mZoomAndMoveImageRunnable = new ImageToPositionRunnable(
+            post(mImageToPositionRunnable = new ImageToPositionRunnable(
                     CropImageView.this,
                     mImageToWrapCropBoundsAnimDuration,
                     centerX,
@@ -606,9 +616,13 @@ public class CropImageView extends TransformImageView {
                     cropImageView.zoomInImage(mOldScale + newScale, cropImageView.mCropRect.centerX(), cropImageView.mCropRect.centerY());
                 }
                 if (!cropImageView.isImageWrapCropBounds()) {
+                    // post next frame
                     cropImageView.post(this);
+                    return;
                 }
             }
+            // the animation is completed.
+            cropImageView.mWrapCropBoundsRunnable = null;
         }
     }
 
@@ -665,7 +679,7 @@ public class CropImageView extends TransformImageView {
             float newScale = CubicEasing.easeInOut(currentMs, 0, mDeltaScale, mDurationMs);
             float newRotate = CubicEasing.easeInOut(currentMs, 0, mDeltaRotate, mDurationMs);
 
-            // Log.d("ZoomAndMoveRunnable", "run: " + currentMs);
+            // Log.d("ImageToPositionRunnable", "run: " + currentMs);
             cropImageView.postTranslate(newX - mPrevX, newY - mPrevY);
             cropImageView.postRotate(newRotate - mPrevRotate, mCenterX + newX, mCenterY + newY);
             cropImageView.zoomInImage(mOldScale + newScale, mCenterX + newX, mCenterY + newY);
@@ -675,8 +689,9 @@ public class CropImageView extends TransformImageView {
             if (currentMs < mDurationMs) {
                 cropImageView.post(this);
             } else {
-                // Log.d("ZoomAndMoveRunnable", "scale:" + cropImageView.getCurrentScale() + ", targetScale:" + (mOldScale + mDeltaScale));
-                cropImageView.setImageToWrapCropBounds();
+                // Log.d("ImageToPositionRunnable", "scale:" + cropImageView.getCurrentScale() + ", targetScale:" + (mOldScale + mDeltaScale));
+                // cropImageView.setImageToWrapCropBounds();
+                cropImageView.mImageToPositionRunnable = null;
             }
         }
     }
@@ -727,6 +742,7 @@ public class CropImageView extends TransformImageView {
                 cropImageView.zoomInImage(mOldScale + newScale, mDestX, mDestY);
                 cropImageView.post(this);
             } else {
+                cropImageView.mZoomImageToPositionRunnable = null;
                 cropImageView.setImageToWrapCropBounds();
             }
         }
