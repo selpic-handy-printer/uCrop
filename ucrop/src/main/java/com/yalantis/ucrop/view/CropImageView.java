@@ -349,7 +349,6 @@ public class CropImageView extends TransformImageView {
             return;
         }
 
-        float currentScale = getCurrentScale();
         if (animate) {
             post(mImageToPositionRunnable = new ImageToPositionRunnable(
                     CropImageView.this,
@@ -358,14 +357,13 @@ public class CropImageView extends TransformImageView {
                     centerY,
                     deltaX,
                     deltaY,
-                    currentScale,
                     deltaScale,
                     90
             ));
         } else {
             postTranslate(deltaX, deltaY);
             postRotate(deltaRotate, centerX + deltaX, centerY + deltaY);
-            zoomInImage(currentScale + deltaScale, centerX + deltaX, centerY + centerY);
+            zoomInImage(getCurrentScale() + deltaScale, centerX + deltaX, centerY + centerY);
         }
     }
 
@@ -631,12 +629,13 @@ public class CropImageView extends TransformImageView {
         private final WeakReference<CropImageView> mCropImageView;
 
         private final long mDurationMs;
+        private final long mStartTime;
         private float mCenterX;
         private float mCenterY;
-        private float mDeltaRotate;
-        private final long mStartTime;
-        private float mPrevX, mPrevY, mPrevRotate;
+        private float mPrevX, mPrevY;
         private final float mCenterDiffX, mCenterDiffY;
+        private final float mOldRotate;
+        private final float mDeltaRotate;
         private final float mOldScale;
         private final float mDeltaScale;
 
@@ -644,7 +643,6 @@ public class CropImageView extends TransformImageView {
                                        long durationMs,
                                        float centerX, float centerY,
                                        float centerDiffX, float centerDiffY,
-                                       float oldScale,
                                        float deltaScale,
                                        float deltaRotate
         ) {
@@ -653,15 +651,16 @@ public class CropImageView extends TransformImageView {
             mDurationMs = durationMs;
             mCenterX = centerX;
             mCenterY = centerY;
+            mOldRotate = cropImageView.getCurrentAngle();
             mDeltaRotate = deltaRotate;
             mStartTime = System.currentTimeMillis();
-            mPrevX = 0;
-            mPrevY = 0;
-            mPrevRotate = 0;
             mCenterDiffX = centerDiffX;
             mCenterDiffY = centerDiffY;
-            mOldScale = oldScale;
+            mOldScale = cropImageView.getCurrentScale();
             mDeltaScale = deltaScale;
+
+            mPrevX = 0;
+            mPrevY = 0;
         }
 
         @Override
@@ -679,19 +678,24 @@ public class CropImageView extends TransformImageView {
             float newScale = CubicEasing.easeInOut(currentMs, 0, mDeltaScale, mDurationMs);
             float newRotate = CubicEasing.easeInOut(currentMs, 0, mDeltaRotate, mDurationMs);
 
-            // Log.d("ImageToPositionRunnable", "run: " + currentMs);
+            // postRotate() are inaccurate, so need to be recalculated prevRotate.
+            float prevRotate = cropImageView.getCurrentAngle() - mOldRotate;
+
+            // Log.d("ImageToPositionRunnable", "run: " + currentMs + ", rotate:" + newRotate);
             cropImageView.postTranslate(newX - mPrevX, newY - mPrevY);
-            cropImageView.postRotate(newRotate - mPrevRotate, mCenterX + newX, mCenterY + newY);
+            cropImageView.postRotate(newRotate - prevRotate, mCenterX + newX, mCenterY + newY);
             cropImageView.zoomInImage(mOldScale + newScale, mCenterX + newX, mCenterY + newY);
             mPrevX = newX;
             mPrevY = newY;
-            mPrevRotate = newRotate;
             if (currentMs < mDurationMs) {
                 cropImageView.post(this);
             } else {
-                // Log.d("ImageToPositionRunnable", "scale:" + cropImageView.getCurrentScale() + ", targetScale:" + (mOldScale + mDeltaScale));
-                // cropImageView.setImageToWrapCropBounds();
+                // Log.d("ImageToPositionRunnable", "wrap: " + cropImageView.isImageWrapCropBounds()
+                //         + ", scale:" + cropImageView.getCurrentScale() + ", targetScale:" + (mOldScale + mDeltaScale)
+                //         + ", rotate:" + cropImageView.getCurrentAngle() + ", targetRotate:" + (mOldRotate + mDeltaRotate)
+                // );
                 cropImageView.mImageToPositionRunnable = null;
+                cropImageView.setImageToWrapCropBounds();
             }
         }
     }
