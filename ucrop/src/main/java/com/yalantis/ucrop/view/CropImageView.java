@@ -3,8 +3,10 @@ package com.yalantis.ucrop.view;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.RectF;
+import android.graphics.Region;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.util.AttributeSet;
@@ -42,6 +44,8 @@ public class CropImageView extends TransformImageView {
     private final RectF mCropRect = new RectF();
 
     private final Matrix mTempMatrix = new Matrix();
+    private RectF mImageMaskRect;
+    private int mImageMaskColor = 0x88000000;
 
     private float mTargetAspectRatio;
     private float mMaxScaleMultiplier = DEFAULT_MAX_SCALE_MULTIPLIER;
@@ -65,6 +69,41 @@ public class CropImageView extends TransformImageView {
 
     public CropImageView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        if (mImageMaskRect != null) {
+            int saveCount = canvas.save();
+            canvas.concat(getImageMatrix());
+
+            canvas.clipRect(mImageMaskRect, Region.Op.DIFFERENCE);
+            canvas.drawColor(mImageMaskColor);
+
+            canvas.restoreToCount(saveCount);
+        }
+    }
+
+    public void setImageMaskRect(RectF maskRect) {
+        if (maskRect == null) {
+            this.mImageMaskRect = null;
+        } else if (getImageMatrix().invert(mTempMatrix)) {
+            RectF dst = new RectF();
+            mTempMatrix.mapRect(dst, maskRect);
+            this.mImageMaskRect = dst;
+        } else {
+            return;
+        }
+        invalidate();
+    }
+
+    public void setImageMaskColor(int imageMaskColor) {
+        if (imageMaskColor == mImageMaskColor) {
+            return;
+        }
+        mImageMaskColor = imageMaskColor;
+        invalidate();
     }
 
     /**
@@ -266,6 +305,9 @@ public class CropImageView extends TransformImageView {
         removeCallbacks(mWrapCropBoundsRunnable);
         removeCallbacks(mZoomImageToPositionRunnable);
         removeCallbacks(mImageToPositionRunnable);
+        if (mImageToPositionRunnable != null && mImageToPositionRunnable.mCallback != null) {
+            mImageToPositionRunnable.mCallback.onCompleteOrCancel(true);
+        }
         mWrapCropBoundsRunnable = null;
         mZoomImageToPositionRunnable = null;
         mImageToPositionRunnable = null;
@@ -343,7 +385,8 @@ public class CropImageView extends TransformImageView {
             float deltaScale,
             float deltaRotate,
             float centerX, float centerY,
-            boolean animate
+            boolean animate,
+            OnCompleteOrCancelCallback callback
     ) {
         if (!mBitmapLaidOut) {
             return;
@@ -352,13 +395,14 @@ public class CropImageView extends TransformImageView {
         if (animate) {
             post(mImageToPositionRunnable = new ImageToPositionRunnable(
                     CropImageView.this,
-                    mImageToWrapCropBoundsAnimDuration,
+                    mImageToWrapCropBoundsAnimDuration*10,
                     centerX,
                     centerY,
                     deltaX,
                     deltaY,
                     deltaScale,
-                    90
+                    90,
+                    callback
             ));
         } else {
             postTranslate(deltaX, deltaY);
@@ -638,15 +682,17 @@ public class CropImageView extends TransformImageView {
         private final float mDeltaRotate;
         private final float mOldScale;
         private final float mDeltaScale;
+        OnCompleteOrCancelCallback mCallback;
 
         public ImageToPositionRunnable(CropImageView cropImageView,
                                        long durationMs,
                                        float centerX, float centerY,
                                        float centerDiffX, float centerDiffY,
                                        float deltaScale,
-                                       float deltaRotate
+                                       float deltaRotate,
+                                       OnCompleteOrCancelCallback callback
         ) {
-
+            mCallback = callback;
             mCropImageView = new WeakReference<>(cropImageView);
             mDurationMs = durationMs;
             mCenterX = centerX;
@@ -695,6 +741,9 @@ public class CropImageView extends TransformImageView {
                 //         + ", rotate:" + cropImageView.getCurrentAngle() + ", targetRotate:" + (mOldRotate + mDeltaRotate)
                 // );
                 cropImageView.mImageToPositionRunnable = null;
+                if (mCallback != null) {
+                    mCallback.onCompleteOrCancel(false);
+                }
                 cropImageView.setImageToWrapCropBounds();
             }
         }
@@ -753,4 +802,7 @@ public class CropImageView extends TransformImageView {
 
     }
 
+    interface OnCompleteOrCancelCallback {
+        void onCompleteOrCancel(boolean isCancel);
+    }
 }

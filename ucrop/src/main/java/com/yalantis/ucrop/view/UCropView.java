@@ -100,6 +100,9 @@ public class UCropView extends FrameLayout {
 
     public void rotate90(boolean forceFillView) {
         RectF oldCropRect = new RectF(mViewOverlay.getCropViewRect());
+        mCropImageView.setImageMaskRect(oldCropRect);
+        mViewOverlay.setVisibility(INVISIBLE);
+
         mViewOverlay.rotate90(forceFillView);
         RectF cropRect = mViewOverlay.getCropViewRect();
         float scale = cropRect.height() / oldCropRect.width();
@@ -110,6 +113,14 @@ public class UCropView extends FrameLayout {
         float finalCenterX = mCropImageView.getCropRect().centerX();
         float finalCenterY = mCropImageView.getCropRect().centerY();
         mCropImageView.cancelAllAnimations(); // cancel prev animation
-        mCropImageView.setImageToPosition(deltaX, deltaY, deltaScale, 90, finalCenterX - deltaX, finalCenterY - deltaY, true);
+        mCropImageView.setImageToPosition(deltaX, deltaY, deltaScale, 90, finalCenterX - deltaX, finalCenterY - deltaY, true,
+                new CropImageView.OnCompleteOrCancelCallback() {
+                    @Override
+                    public void onCompleteOrCancel(boolean isCancel) {
+                        mCropImageView.setImageMaskRect(null);
+                        mViewOverlay.setVisibility(VISIBLE);
+                    }
+                }
+        );
     }
 }
