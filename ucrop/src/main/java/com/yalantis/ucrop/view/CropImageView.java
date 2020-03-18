@@ -408,7 +408,7 @@ public class CropImageView extends TransformImageView {
         if (animate) {
             post(mImageToPositionRunnable = new ImageToPositionRunnable(
                     CropImageView.this,
-                    mImageToWrapCropBoundsAnimDuration * 10,
+                    mImageToWrapCropBoundsAnimDuration,
                     centerX,
                     centerY,
                     deltaX,
