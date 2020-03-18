@@ -100,7 +100,7 @@ public class UCropView extends FrameLayout {
 
     public void rotate90(boolean forceFillView) {
         RectF oldCropRect = new RectF(mViewOverlay.getCropViewRect());
-        mCropImageView.setImageMaskRect(oldCropRect);
+        mCropImageView.setImageMaskRect(mCropImageView.getCropRect());
         mViewOverlay.setVisibility(INVISIBLE);
 
         mViewOverlay.rotate90(forceFillView);

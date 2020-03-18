@@ -45,7 +45,7 @@ public class CropImageView extends TransformImageView {
 
     private final Matrix mTempMatrix = new Matrix();
     private RectF mImageMaskRect;
-    private int mImageMaskColor = 0x88000000;
+    private int mImageMaskColor = getResources().getColor(R.color.ucrop_color_default_dimmed);
 
     private float mTargetAspectRatio;
     private float mMaxScaleMultiplier = DEFAULT_MAX_SCALE_MULTIPLIER;
@@ -75,7 +75,9 @@ public class CropImageView extends TransformImageView {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         if (mImageMaskRect != null) {
+            // Apply the same matrix as drawable
             int saveCount = canvas.save();
+            canvas.translate(getPaddingLeft(), getPaddingTop());
             canvas.concat(getImageMatrix());
 
             canvas.clipRect(mImageMaskRect, Region.Op.DIFFERENCE);
@@ -85,6 +87,9 @@ public class CropImageView extends TransformImageView {
         }
     }
 
+    /**
+     * @param maskRect Usually use {@link #getCropRect()}
+     */
     public void setImageMaskRect(RectF maskRect) {
         if (maskRect == null) {
             this.mImageMaskRect = null;
@@ -395,7 +400,7 @@ public class CropImageView extends TransformImageView {
         if (animate) {
             post(mImageToPositionRunnable = new ImageToPositionRunnable(
                     CropImageView.this,
-                    mImageToWrapCropBoundsAnimDuration*10,
+                    mImageToWrapCropBoundsAnimDuration,
                     centerX,
                     centerY,
                     deltaX,
