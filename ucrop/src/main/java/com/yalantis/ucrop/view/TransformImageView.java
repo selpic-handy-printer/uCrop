@@ -9,16 +9,16 @@ import android.net.Uri;
 import android.util.AttributeSet;
 import android.util.Log;
 
+import androidx.annotation.IntRange;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.widget.AppCompatImageView;
+
 import com.yalantis.ucrop.callback.BitmapLoadCallback;
 import com.yalantis.ucrop.model.ExifInfo;
 import com.yalantis.ucrop.util.BitmapLoadUtils;
 import com.yalantis.ucrop.util.FastBitmapDrawable;
 import com.yalantis.ucrop.util.RectUtils;
-
-import androidx.annotation.IntRange;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.widget.AppCompatImageView;
 
 /**
  * Created by Oleksii Shliama (https://github.com/shliama).
@@ -54,6 +54,7 @@ public class TransformImageView extends AppCompatImageView {
 
     private String mImageInputPath, mImageOutputPath;
     private ExifInfo mExifInfo;
+    private float mDesiredAngle = 0f;
 
     /**
      * Interface for rotation and scale change notifying.
@@ -185,6 +186,10 @@ public class TransformImageView extends AppCompatImageView {
         return getMatrixAngle(mCurrentImageMatrix);
     }
 
+    public float getDesiredAngle() {
+        return mDesiredAngle;
+    }
+
     /**
      * This method calculates rotation angle for given Matrix object.
      */
@@ -248,12 +253,22 @@ public class TransformImageView extends AppCompatImageView {
      */
     public void postRotate(float deltaAngle, float px, float py) {
         if (deltaAngle != 0) {
+            mDesiredAngle = (mDesiredAngle + deltaAngle) % 360;
             mCurrentImageMatrix.postRotate(deltaAngle, px, py);
             setImageMatrix(mCurrentImageMatrix);
             if (mTransformImageListener != null) {
                 mTransformImageListener.onRotate(getMatrixAngle(mCurrentImageMatrix));
             }
         }
+    }
+
+    /**
+     * Multiple successive matrix operations will result in distorted results. Use this method to correct the results of matrix operations.
+     */
+    public void correctMatrix(float px, float py) {
+        float delta = mDesiredAngle - getCurrentAngle();
+        postRotate(delta, px, py);
+        mDesiredAngle -= delta;
     }
 
     protected void init() {

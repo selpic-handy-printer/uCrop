@@ -681,7 +681,7 @@ public class CropImageView extends TransformImageView {
         private final long mStartTime;
         private float mCenterX;
         private float mCenterY;
-        private float mPrevX, mPrevY;
+        private float mPrevX, mPrevY, mPrevRotate;
         private final float mCenterDiffX, mCenterDiffY;
         private final float mOldRotate;
         private final float mDeltaRotate;
@@ -710,8 +710,9 @@ public class CropImageView extends TransformImageView {
             mOldScale = cropImageView.getCurrentScale();
             mDeltaScale = deltaScale;
 
-            mPrevX = 0;
-            mPrevY = 0;
+            mPrevX = 0f;
+            mPrevY = 0f;
+            mPrevRotate = 0f;
         }
 
         @Override
@@ -729,21 +730,20 @@ public class CropImageView extends TransformImageView {
             float newScale = CubicEasing.easeInOut(currentMs, 0, mDeltaScale, mDurationMs);
             float newRotate = CubicEasing.easeInOut(currentMs, 0, mDeltaRotate, mDurationMs);
 
-            // postRotate() are inaccurate, so need to be recalculated prevRotate.
-            float prevRotate = cropImageView.getCurrentAngle() - mOldRotate;
-
             // Log.d("ImageToPositionRunnable", "run: " + currentMs + ", rotate:" + newRotate);
             cropImageView.postTranslate(newX - mPrevX, newY - mPrevY);
-            cropImageView.postRotate(newRotate - prevRotate, mCenterX + newX, mCenterY + newY);
+            cropImageView.postRotate(newRotate - mPrevRotate, mCenterX + newX, mCenterY + newY);
             cropImageView.zoomInImage(mOldScale + newScale, mCenterX + newX, mCenterY + newY);
             mPrevX = newX;
             mPrevY = newY;
+            mPrevRotate = newRotate;
             if (currentMs < mDurationMs) {
                 cropImageView.post(this);
             } else {
+                cropImageView.correctMatrix(mCenterX + newX, mCenterY + newY);
                 // Log.d("ImageToPositionRunnable", "wrap: " + cropImageView.isImageWrapCropBounds()
                 //         + ", scale:" + cropImageView.getCurrentScale() + ", targetScale:" + (mOldScale + mDeltaScale)
-                //         + ", rotate:" + cropImageView.getCurrentAngle() + ", targetRotate:" + (mOldRotate + mDeltaRotate)
+                //         + ", rotate:" + cropImageView.getCurrentAngle() + ", targetRotate:" + (mOldRotate + mDeltaRotate) + ", desireAngle:" + cropImageView.getDesiredAngle()
                 // );
                 cropImageView.mImageToPositionRunnable = null;
                 if (mCallback != null) {
