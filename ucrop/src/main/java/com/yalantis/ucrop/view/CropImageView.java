@@ -749,7 +749,6 @@ public class CropImageView extends TransformImageView {
                 if (mCallback != null) {
                     mCallback.onCompleteOrCancel(false);
                 }
-                cropImageView.setImageToWrapCropBounds();
             }
         }
     }
@@ -807,7 +806,7 @@ public class CropImageView extends TransformImageView {
 
     }
 
-    interface OnCompleteOrCancelCallback {
+    public interface OnCompleteOrCancelCallback {
         void onCompleteOrCancel(boolean isCancel);
     }
 }

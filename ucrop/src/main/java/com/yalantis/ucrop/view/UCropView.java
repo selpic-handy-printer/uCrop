@@ -98,7 +98,7 @@ public class UCropView extends FrameLayout {
         }
     }
 
-    public void rotate90(boolean forceFillView) {
+    public void rotate90(boolean forceFillView, final CropImageView.OnCompleteOrCancelCallback callback) {
         RectF oldCropRect = new RectF(mViewOverlay.getCropViewRect());
         mCropImageView.setImageMaskRect(mCropImageView.getCropRect());
         mViewOverlay.setVisibility(INVISIBLE);
@@ -119,6 +119,9 @@ public class UCropView extends FrameLayout {
                     public void onCompleteOrCancel(boolean isCancel) {
                         mCropImageView.setImageMaskRect(null);
                         mViewOverlay.setVisibility(VISIBLE);
+                        if (callback != null) {
+                            callback.onCompleteOrCancel(isCancel);
+                        }
                     }
                 }
         );
