@@ -5,6 +5,7 @@ import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
+import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Region;
 import android.graphics.drawable.Drawable;
@@ -44,7 +45,7 @@ public class CropImageView extends TransformImageView {
     private final RectF mCropRect = new RectF();
 
     private final Matrix mTempMatrix = new Matrix();
-    private RectF mImageMaskRect;
+    private Path mImageMaskPath;
     private int mImageMaskColor = getResources().getColor(R.color.ucrop_color_default_dimmed);
 
     private float mTargetAspectRatio;
@@ -74,13 +75,13 @@ public class CropImageView extends TransformImageView {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        if (mImageMaskRect != null) {
+        if (mImageMaskPath != null) {
             // Apply the same matrix as drawable
             int saveCount = canvas.save();
             canvas.translate(getPaddingLeft(), getPaddingTop());
             canvas.concat(getImageMatrix());
 
-            canvas.clipRect(mImageMaskRect, Region.Op.DIFFERENCE);
+            canvas.clipPath(mImageMaskPath, Region.Op.DIFFERENCE);
             canvas.drawColor(mImageMaskColor);
 
             canvas.restoreToCount(saveCount);
@@ -92,11 +93,18 @@ public class CropImageView extends TransformImageView {
      */
     public void setImageMaskRect(RectF maskRect) {
         if (maskRect == null) {
-            this.mImageMaskRect = null;
+            this.mImageMaskPath = null;
         } else if (getImageMatrix().invert(mTempMatrix)) {
-            RectF dst = new RectF();
-            mTempMatrix.mapRect(dst, maskRect);
-            this.mImageMaskRect = dst;
+            float[] corners = RectUtils.getCornersFromRect(maskRect);
+            float[] points = new float[8];
+            mTempMatrix.mapPoints(points, corners);
+            Path path = new Path();
+            path.moveTo(points[0], points[1]);
+            path.lineTo(points[2], points[3]);
+            path.lineTo(points[4], points[5]);
+            path.lineTo(points[6], points[7]);
+            path.close();
+            this.mImageMaskPath = path;
         } else {
             return;
         }
@@ -400,7 +408,7 @@ public class CropImageView extends TransformImageView {
         if (animate) {
             post(mImageToPositionRunnable = new ImageToPositionRunnable(
                     CropImageView.this,
-                    mImageToWrapCropBoundsAnimDuration,
+                    mImageToWrapCropBoundsAnimDuration * 10,
                     centerX,
                     centerY,
                     deltaX,
